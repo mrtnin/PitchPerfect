@@ -18,15 +18,22 @@ class PlaySoundsViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-
+        
+        //Init the audiPlayer with the url from the receivedAudio instance
         audioPlayer = AVAudioPlayer(contentsOfURL: receivedAudio.filePathUrl, error: nil)
+        
         audioPlayer.enableRate = true
         audioPlayer.prepareToPlay()
+        //Init the audioEngine
         audioEngine = AVAudioEngine()
+        //Fetch the audioFile using the filepathUrl
         audioFile = AVAudioFile(forReading: receivedAudio.filePathUrl, error: nil)
         
+        //Fetch the shared instance of AVAudioSession
         var session = AVAudioSession.sharedInstance()
+        //Set the category of recording
         session.setCategory(AVAudioSessionCategoryPlayAndRecord, error: nil)
+        //Override the output to be the phones loud speaker
         session.overrideOutputAudioPort(.Speaker, error: nil)
     }
 
@@ -34,21 +41,18 @@ class PlaySoundsViewController: UIViewController {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
     }
-    
+    // MARK: IBActions
     @IBAction func playSlow(sender: UIButton) {
         stopAndResetPlayerAndEngine()
-        audioPlayer.rate = 0.5
-        audioPlayer.currentTime = 0.0
-        audioPlayer.play()
+        playAudioWithOptions(rate: 0.5, andTime: 0.0)
     }
 
     @IBAction func playFast(sender: UIButton) {
         stopAndResetPlayerAndEngine()
-        audioPlayer.rate = 1.5
-        audioPlayer.currentTime = 0.0
-        audioPlayer.play()
+        playAudioWithOptions(rate: 2.0, andTime: 0.0)
     }
-    
+
+
     @IBAction func playChipmunkAudio(sender: UIButton) {
         playAudioWithVariablePitch(1000)
     }
@@ -75,7 +79,48 @@ class PlaySoundsViewController: UIViewController {
         
     }
     
-    func playAudioWithEffect(effect: AVAudioUnitEffect) {
+    @IBAction func stopAudio(sender: UIButton) {
+        stopAndResetPlayerAndEngine()
+    }
+    
+    // MARK: playback functions
+    func stopAndResetPlayerAndEngine() {
+        //This function stops and resets audioPlayer and audioEngine
+        audioPlayer.stop()
+        audioEngine.stop()
+        audioEngine.reset()
+    }
+    
+    func playAudioWithOptions(#rate: Float!, andTime time:NSTimeInterval!) {
+        //This function receives a float for the rate, and the start time for .currentTime
+        //Then plays the audio.
+        audioPlayer.rate = rate
+        audioPlayer.currentTime = time
+        audioPlayer.play()
+    }
+    
+    // MARK: AVAudioEffects
+
+    func playAudioWithVariablePitch(pitch: Float) {
+        /*
+        This functon accepts a float for the pitch. 
+        It inits a class for the pitch effect.
+        Then the function sets the pitch, and lastly it calls
+        playAudioWithEffects using the changePitchEffect as argument.
+        */
+        var changePitchEffect = AVAudioUnitTimePitch()
+        changePitchEffect.pitch = pitch
+        playAudioWithEffect(changePitchEffect)
+    }
+    
+    func playAudioWithEffect(effect: AVAudioUnit) {
+        /*
+        First, we stop and reset the player and engine in case audio is currently playing.
+        We create a audioPLayerNode, and attaches that to the audioEngine.
+        This function accepts a AVAudioUnit as argument. I'm using AVAudioUnit since
+        the pitch, reverb, echo effects are all subclasses of AVAudioUnit.
+        */
+        
         stopAndResetPlayerAndEngine()
         
         var audioPlayerNode = AVAudioPlayerNode()
@@ -90,34 +135,4 @@ class PlaySoundsViewController: UIViewController {
         audioPlayerNode.play()
     }
     
-    func playAudioWithVariablePitch(pitch: Float) {
-        stopAndResetPlayerAndEngine()
-        
-        
-        var audioPlayerNode = AVAudioPlayerNode()
-        audioEngine.attachNode(audioPlayerNode)
-        
-        var changePitchEffect = AVAudioUnitTimePitch()
-        changePitchEffect.pitch = pitch
-        audioEngine.attachNode(changePitchEffect)
-        
-        audioEngine.connect(audioPlayerNode, to: changePitchEffect, format: nil)
-        audioEngine.connect(changePitchEffect, to: audioEngine.outputNode, format: nil)
-        
-        audioPlayerNode.scheduleFile(audioFile, atTime: nil, completionHandler: nil)
-        audioEngine.startAndReturnError(nil)
-        
-        audioPlayerNode.play()
-    }
-    
-    @IBAction func stopAudio(sender: UIButton) {
-        stopAndResetPlayerAndEngine()
-    }
-    
-    func stopAndResetPlayerAndEngine() {
-        audioPlayer.stop()
-        audioEngine.stop()
-        audioEngine.reset()
-    }
-
 }
